@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Boiler Efficiency Calculator - ABN PLANT LAGUNA</title>
+<style>
+    .container {
+        margin: 20px auto;
+        max-width: 600px;
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        text-align: left;
+    }
+    label {
+        display: block;
+        margin-top: 15px;
+    }
+    input, select, button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        font-size: 16px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+    }
+    button {
+        background-color: #1976d2;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+    .output {
+        margin-top: 20px;
+        background: #eeeeee;
+        padding: 15px;
+        border-radius: 8px;
+    }
+    .error {
+        color: red;
+        margin-top: 10px;
+    }
+    
+        body { font-family: sans-serif; padding: 10px; background: #fff; }
+        h2 { text-align: center; }
+        label { display: block; margin-top: 10px; }
+        input, select, button { width: 100%; padding: 10px; margin-top: 5px; font-size: 16px; }
+        .output { margin-top: 20px; background: #f9f9f9; padding: 10px; border: 1px solid #ccc; }
+        .error { color: red; margin-top: 10px; }
+    </style>
+</head>
+<body style="font-family: 'Segoe UI', sans-serif; background-color: #f9f9f9; color: #333; padding: 20px; text-align: center;">
+<div style="text-align: center; margin-top: 10px; margin-bottom: 20px;">
+<img alt="Boiler Efficiency Banner" src="A858C62E-023C-4370-8E38-6AF5DD0E67CA.jpeg" style="max-width: 100%; height: auto;"/>
+</div>
+<div class="container"><label>Method:</label>
+<select id="method" onchange="changeMethod()">
+<option value="steam">Steam Flow</option>
+<option value="water">Water Flow</option>
+</select>
+<div id="steamFields">
+<label>Steam Start (tons):</label>
+<input id="steamStart" type="number"/>
+<label>Steam End (tons):</label>
+<input id="steamEnd" type="number"/>
+</div>
+<div id="waterFields" style="display:none;">
+<label>Water Start (m³):</label>
+<input id="waterStart" type="number"/>
+<label>Water End (m³):</label>
+<input id="waterEnd" type="number"/>
+</div>
+<label>Deaerator Temp (°C):</label>
+<input id="temp" type="number" value=""/>
+<label>GCV (kcal/kg):</label>
+<input id="gcv" type="number" value=""/>
+<label>Bucket Count:</label>
+<input id="bucketCount" type="number"/>
+<label>Bucket Weight (kg):</label>
+<input id="bucketWeight" type="number" value=""/>
+
+<div class="output" id="result"></div>
+
+<div id="sendConfirm" style="margin-top:10px; color: green;"></div>
+<div class="error" id="error"></div>
+<div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;"><button onclick="compute()" style="flex: 1;">Calculate</button><button onclick="sendToAdmin()" style="flex: 1;">Send to Admin</button></div></div><script>
+        function changeMethod() {
+            const method = document.getElementById("method").value;
+            document.getElementById("steamFields").style.display = (method === "steam") ? "block" : "none";
+            document.getElementById("waterFields").style.display = (method === "water") ? "block" : "none";
+            document.getElementById("result").innerHTML = "";
+            document.getElementById("error").innerHTML = "";
+        }
+
+        function compute() {
+            const method = document.getElementById("method").value;
+            const temp = parseFloat(document.getElementById("temp").value);
+            const gcv = parseFloat(document.getElementById("gcv").value);
+            const bucketCount = parseFloat(document.getElementById("bucketCount").value);
+            const bucketWeight = parseFloat(document.getElementById("bucketWeight").value);
+            const enthalpy = 389;
+
+            let feedwater = 0;
+
+            if (isNaN(temp) || isNaN(gcv) || isNaN(bucketCount) || isNaN(bucketWeight)) {
+                document.getElementById("error").innerText = "Please fill in all required fields.";
+                return;
+            }
+
+            if (method === "steam") {
+                const start = parseFloat(document.getElementById("steamStart").value);
+                const end = parseFloat(document.getElementById("steamEnd").value);
+                if (isNaN(start) || isNaN(end) || end <= start) {
+                    document.getElementById("error").innerText = "Check steam readings.";
+                    return;
+                }
+                feedwater = (end - start) * 1000;
+            } else {
+                const start = parseFloat(document.getElementById("waterStart").value);
+                const end = parseFloat(document.getElementById("waterEnd").value);
+                if (isNaN(start) || isNaN(end) || end <= start) {
+                    document.getElementById("error").innerText = "Check water readings.";
+                    return;
+                }
+                feedwater = (end - start) * 1000;
+            }
+
+            const coalUsed = bucketCount * bucketWeight;
+            const heatInput = coalUsed * gcv;
+            const heatAbsorbed = feedwater * enthalpy;
+            const efficiency = (heatAbsorbed / heatInput) * 100;
+
+            let remark = "";
+            if (efficiency > 100) {
+                remark = "Efficiency exceeds 100%. Check input data!";
+            } else if (efficiency >= 38 && efficiency <= 42) {
+                remark = "Efficiency is GOOD.";
+            } else if (efficiency < 38) {
+                remark = "Efficiency is LOW. Check coal quality or operations.";
+            } else {
+                remark = "Efficiency is ABOVE NORMAL range.";
+            }
+
+            document.getElementById("result").innerHTML = `
+                Feedwater: <b>${feedwater.toFixed(0)} kg</b><br>
+                Coal Used: <b>${coalUsed.toFixed(0)} kg</b><br>
+                Heat Input: <b>${heatInput.toFixed(0)} kcal</b><br>
+                Heat Absorbed: <b>${heatAbsorbed.toFixed(0)} kcal</b><br>
+                Efficiency: <b>${efficiency.toFixed(2)}%</b><br><br>
+                <b>Remarks:</b> ${remark}
+            `;
+            document.getElementById("error").innerText = "";
+        }
+    
+function sendToAdmin() {
+    const resultBox = document.getElementById("result");
+    const content = resultBox.innerHTML;
+    if (!content.trim()) {
+        document.getElementById("sendConfirm").innerText = "No data to send.";
+        return;
+    }
+
+    let logs = JSON.parse(localStorage.getItem("adminLogs_boiler") || "[]");
+    logs.push({
+        timestamp: new Date().toLocaleString(),
+        content: content
+    });
+    localStorage.setItem("adminLogs_boiler", JSON.stringify(logs));
+    document.getElementById("sendConfirm").innerText = "Log sent to admin!";
+}
+</script>
+<script src="https://static.app/js/static.js" type="text/javascript">
+function sendToAdmin() {
+    const resultBox = document.getElementById("result");
+    const content = resultBox.innerHTML;
+    if (!content.trim()) {
+        document.getElementById("sendConfirm").innerText = "No data to send.";
+        return;
+    }
+
+    let logs = JSON.parse(localStorage.getItem("adminLogs_boiler") || "[]");
+    logs.push({
+        timestamp: new Date().toLocaleString(),
+        content: content
+    });
+    localStorage.setItem("adminLogs_boiler", JSON.stringify(logs));
+    document.getElementById("sendConfirm").innerText = "Log sent to admin!";
+}
+</script>
+</body>
+</html>
